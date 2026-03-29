@@ -45,10 +45,10 @@
   }
   @media (max-width: 700px) {
     .controls { width: 100%; box-sizing: border-box; }
-    .friction-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .friction-pair { display: flex; flex-direction: column; gap: 10px; }
   }
   @media (max-width: 400px) {
-    .friction-pair { grid-template-columns: 1fr; }
+    .friction-pair { flex-direction: column; }
   }
   .controls h2 { font-family: 'Crimson Pro', serif; font-size: 1.1rem; margin-bottom: 12px; border-bottom: 1px solid #c8b890; padding-bottom: 5px; }
 
