@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Friction Explorer — Allora and the Puzzles of Archimedes</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=Atkinson+Hyperlegible:wght@400;700&display=swap');
+
+  :root {
+    --cream: #faf6ee; --parchment: #f0e8d0;
+    --ink: #2a1f0e; --ink-light: #5a4a32;
+    --rose: #c85a6e; --teal: #2a7a7a; --blue: #3a6a9a; --gold: #c8922a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+  body {
+    font-family: 'Atkinson Hyperlegible', sans-serif;
+    background: var(--cream); color: var(--ink);
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; padding: 16px;
+  }
+  h1 { font-family: 'Crimson Pro', serif; font-size: clamp(1.2rem, 4vw, 2rem); text-align: center; margin-bottom: 4px; letter-spacing: -0.02em; }
+  .subtitle { font-family: 'Crimson Pro', serif; font-style: italic; color: var(--ink-light); font-size: clamp(.8rem, 2.5vw, 1rem); margin-bottom: 6px; text-align: center; }
+  .tagline { font-family: 'Crimson Pro', serif; font-size: clamp(.8rem, 2.5vw, 1.05rem); color: var(--ink-light); text-align: center; margin-bottom: 14px; max-width: 600px; }
+
+  /* ── Layout: side-by-side on wide, stacked on narrow ── */
+  .layout {
+    display: flex; gap: 16px; width: 100%; max-width: 1060px; align-items: flex-start;
+    min-width: 0;
+  }
+  @media (max-width: 700px) {
+    .layout { flex-direction: column; align-items: stretch; }
+    body { padding: 10px; }
+  }
+
+  /* ── Controls ── */
+  .controls {
+    background: var(--parchment); border: 2px solid #c8b890;
+    border-radius: 12px; padding: 16px; width: 250px; flex-shrink: 0;
+    box-shadow: 3px 4px 0 #c8b890; min-width: 0;
+  }
+  @media (max-width: 700px) {
+    .controls { width: 100%; box-sizing: border-box; }
+    .friction-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  }
+  @media (max-width: 400px) {
+    .friction-pair { grid-template-columns: 1fr; }
+  }
+  .controls h2 { font-family: 'Crimson Pro', serif; font-size: 1.1rem; margin-bottom: 12px; border-bottom: 1px solid #c8b890; padding-bottom: 5px; }
+
+  .fsec { margin-bottom: 12px; padding: 10px; border-radius: 8px; border: 1.5px solid transparent; transition: border-color .3s; }
+  @media (max-width: 700px) { .fsec { margin-bottom: 0; } }
+  .fsec.s-bg { background: #f5eee0; } .fsec.k-bg { background: #eef5f0; }
+  .fsec.s-on { border-color: var(--rose); } .fsec.k-on { border-color: var(--teal); }
+
+  .crow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; cursor: pointer; user-select: none; }
+  .crow input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; accent-color: var(--rose); }
+  .crow label { font-size: .9rem; font-weight: 700; cursor: pointer; }
+  .cs { color: var(--rose); } .ck { color: var(--teal); }
+
+  .mrow { display: flex; align-items: center; gap: 6px; margin-top: 4px; overflow: hidden; }
+  .mlabel { font-family: 'Crimson Pro', serif; font-style: italic; font-size: .95rem; min-width: 58px; color: var(--ink-light); flex-shrink: 0; }
+  .mval { font-family: 'Crimson Pro', serif; font-weight: 600; font-size: .9rem; min-width: 28px; flex-shrink: 0; }
+  input[type=range] { flex: 1; height: 6px; cursor: pointer; min-width: 0; }
+  input[type=range]:focus { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 3px; }
+  .sr { accent-color: var(--rose); } .kr { accent-color: var(--teal); }
+
+  /* Kinetic slider with red limit marker */
+  .slider-wrap { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
+  .slider-wrap input[type=range] { width: 100%; }
+  .slider-limit {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 14px; background: var(--rose);
+    border-radius: 2px; pointer-events: none;
+    box-shadow: 0 0 3px rgba(200,90,110,0.5);
+  }
+  .knote { font-size: .68rem; color: var(--ink-light); font-style: italic; margin-top: 4px; line-height: 1.3; }
+
+  /* Compare button */
+  .compare-btn {
+    display: none; margin-top: 8px; width: 100%;
+    padding: 8px 10px; border-radius: 6px; border: 1.5px solid;
+    font-family: 'Atkinson Hyperlegible', sans-serif; font-size: .78rem;
+    font-weight: 700; cursor: pointer; transition: background .15s, transform .1s;
+    text-align: left; -webkit-tap-highlight-color: transparent;
+  }
+  .compare-btn.appearing {
+    animation: compareAppear 0.4s ease-out forwards, comparePulse 0.4s ease-in-out 0.4s 3;
+  }
+  @keyframes compareAppear {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes comparePulse {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.04); }
+    100% { transform: scale(1); }
+  }
+  .compare-btn.s-btn { border-color: var(--rose); color: var(--rose); background: #fdf0f2; }
+  .compare-btn.s-btn:hover, .compare-btn.s-btn:active { background: #fde0e4; }
+  .compare-btn.k-btn { border-color: var(--teal); color: var(--teal); background: #eef8f8; }
+  .compare-btn.k-btn:hover, .compare-btn.k-btn:active { background: #daf0f0; }
+  .compare-btn:focus { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  /* Inline prediction reveal */
+  .pred-inline {
+    display: none; margin-top: 8px; padding: 9px 10px;
+    border-radius: 6px; font-size: .75rem; line-height: 1.5;
+    border: 1.5px solid #c8b890;
+  }
+  .pred-inline.s-color { background: #fef8f0; border-color: #e0a070; }
+  .pred-inline.k-color { background: #f0faf8; border-color: #70b8b0; }
+  .pred-your-ans { font-weight: 700; margin-bottom: 4px; }
+  .pred-correct { color: #1a6030; } .pred-wrong { color: #7a3010; } .pred-none-lbl { color: var(--ink-light); font-style: italic; }
+  .pred-physics { margin-top: 4px; padding-top: 4px; border-top: 1px solid #d0c8b0; color: var(--ink-light); }
+  .pred-physics strong { color: var(--ink); }
+
+  /* Bottom controls row — arrow checkbox, instructions etc */
+  .bottom-controls { margin-top: 10px; }
+  .arrow-row { padding: 8px 10px; background: #f0ecd8; border-radius: 8px; border: 1.5px solid #c8b890; margin-bottom: 10px; }
+  .inst { padding: 9px 10px; background: #eae4d4; border-radius: 8px; font-size: .74rem; line-height: 1.55; color: var(--ink-light); margin-bottom: 10px; }
+  .inst strong { color: var(--ink); }
+  .keyboard-hint { padding: 7px 10px; background: #eef0f8; border-radius: 8px; border: 1px solid #b8c0d8; font-size: .7rem; color: #3a4a7a; line-height: 1.45; }
+  .keyboard-hint kbd { background: #fff; border: 1px solid #b0b8d0; border-radius: 3px; padding: 1px 4px; font-size: .72rem; font-family: monospace; }
+  @media (max-width: 700px) { .keyboard-hint { display: none; } }
+
+  /* Meter (sidebar) */
+  .meter { padding: 10px; background: #f8f4e8; border-radius: 8px; border: 1.5px solid #c8b890; margin-bottom: 10px; }
+  .meter h3 { font-family: 'Crimson Pro', serif; font-size: .9rem; margin-bottom: 6px; }
+  .mtrack { position: relative; height: 18px; background: #e0d8c0; border-radius: 4px; overflow: hidden; margin-bottom: 3px; }
+  .mfill { height: 100%; border-radius: 4px; transition: width .04s, background .1s; }
+  .mline { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--rose); opacity: .85; pointer-events: none; }
+  .mlabs { display: flex; justify-content: space-between; font-size: .65rem; color: var(--ink-light); }
+  .slabel { margin-top: 6px; font-size: .78rem; font-weight: 700; text-align: center; padding: 3px 6px; border-radius: 4px; min-height: 22px; }
+  .sr-rest     { color: var(--ink-light); background: #e8e0cc; }
+  .sr-strain   { color: var(--rose);      background: #fde8ec; }
+  .sr-slide    { color: var(--teal);      background: #e0f5f0; }
+  .sr-free     { color: var(--gold);      background: #fdf0dc; }
+
+  .imaginary-banner { display: none !important; }
+
+  /* ── Canvas ── */
+  .cwrap { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; width: 100%; }
+  canvas {
+    border-radius: 12px; border: 2px solid #c8b890; box-shadow: 4px 5px 0 #c8b890;
+    display: block; touch-action: none; width: 100%; height: auto;
+    max-width: 720px; min-width: 0;
+  }
+  canvas:focus { outline: 3px solid var(--blue); outline-offset: 2px; }
+  .chint { margin-top: 6px; font-size: .72rem; color: var(--ink-light); font-style: italic; text-align: center; }
+  @media (max-width: 700px) { .chint .kb-part { display: none; } }
+
+  /* ── Prediction Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(42,31,14,0.55);
+    display: flex; align-items: flex-start; justify-content: center;
+    z-index: 100; backdrop-filter: blur(3px); padding: 12px;
+    overflow-y: auto;
+  }
+  .modal {
+    background: var(--cream); border: 2px solid #c8b890;
+    border-radius: 16px; padding: clamp(14px, 4vw, 32px); max-width: 520px; width: 100%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25); box-sizing: border-box;
+    margin: auto;
+  }
+  .modal h2 { font-family: 'Crimson Pro', serif; font-size: clamp(1.2rem, 4vw, 1.5rem); margin-bottom: 6px; }
+  .modal .intro { font-size: clamp(.8rem, 2.5vw, .9rem); color: var(--ink-light); margin-bottom: 16px; line-height: 1.5; }
+  .question { margin-bottom: 16px; }
+  .question p { font-size: clamp(.82rem, 2.5vw, .9rem); font-weight: 700; margin-bottom: 8px; line-height: 1.4; }
+  .choices { display: flex; flex-wrap: wrap; gap: 6px; }
+  .choice-btn {
+    padding: 8px 12px; border-radius: 20px; border: 1.5px solid #c8b890;
+    background: var(--parchment); font-size: clamp(.78rem, 2.2vw, .82rem); cursor: pointer;
+    font-family: 'Atkinson Hyperlegible', sans-serif; color: var(--ink);
+    transition: background .15s, border-color .15s; -webkit-tap-highlight-color: transparent;
+  }
+  .choice-btn:hover, .choice-btn:active { background: #e8dcc0; border-color: var(--gold); }
+  .choice-btn:focus { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .choice-btn.selected { background: var(--gold); border-color: #a07010; color: #fff; }
+  .modal-footer { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .modal-note { font-size: .73rem; color: var(--ink-light); font-style: italic; flex: 1; min-width: 140px; }
+  .begin-btn {
+    padding: 10px 22px; background: var(--ink); color: var(--cream);
+    border: none; border-radius: 8px; font-size: .9rem; font-weight: 700;
+    font-family: 'Atkinson Hyperlegible', sans-serif; cursor: pointer;
+    transition: background .15s; -webkit-tap-highlight-color: transparent;
+  }
+  .begin-btn:hover, .begin-btn:active { background: #4a3a20; }
+  .begin-btn:focus { outline: 2px solid var(--blue); outline-offset: 3px; }
+
+  /* ── Reflection Panel ── */
+  .reflect {
+    display: none; margin-top: 16px; padding: 16px;
+    background: var(--parchment); border: 2px solid #c8b890;
+    border-radius: 12px; box-shadow: 3px 4px 0 #c8b890;
+    width: 100%; max-width: 1060px; box-sizing: border-box;
+  }
+  .reflect h3 { font-family: 'Crimson Pro', serif; font-size: 1.15rem; margin-bottom: 6px; }
+  .reflect > p { font-size: .83rem; color: var(--ink-light); margin-bottom: 12px; line-height: 1.5; }
+  .reflect-questions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .reflect-questions { grid-template-columns: 1fr; } }
+  .rq label { display: block; font-size: .8rem; font-weight: 700; margin-bottom: 5px; color: var(--ink); }
+  .rq textarea {
+    width: 100%; height: 72px; padding: 7px 10px;
+    border: 1.5px solid #c8b890; border-radius: 6px;
+    background: var(--cream); font-family: 'Atkinson Hyperlegible', sans-serif;
+    font-size: .82rem; resize: vertical; color: var(--ink);
+  }
+  .rq textarea:focus { outline: 2px solid var(--blue); border-color: var(--blue); }
+</style>
+</head>
+<body>
+
+<!-- ── Prediction Modal ── -->
+<div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <h2 id="modalTitle">🧱 Before you experiment…</h2>
+    <p class="intro">Make a prediction for each situation — there are no wrong answers! You'll be able to compare your predictions to what actually happens after you try each one.</p>
+    <div class="question">
+      <p>1. With <strong style="color:var(--rose)">static friction</strong> on, you have to pull quite hard before the block moves at all. If you turn static friction <em>off</em>, what changes?</p>
+      <div class="choices">
+        <button class="choice-btn" data-q="1">There's no longer a hard threshold — even a tiny pull does something</button>
+        <button class="choice-btn" data-q="1">The block becomes impossible to move</button>
+        <button class="choice-btn" data-q="1">Nothing changes — kinetic friction still holds it</button>
+        <button class="choice-btn" data-q="1">Not sure</button>
+      </div>
+    </div>
+    <div class="question">
+      <p>2. If you turn off <strong style="color:var(--teal)">kinetic friction</strong> but leave static on, what happens once you get the block moving?</p>
+      <div class="choices">
+        <button class="choice-btn" data-q="2">It slows down normally</button>
+        <button class="choice-btn" data-q="2">It keeps going forever</button>
+        <button class="choice-btn" data-q="2">It speeds up on its own</button>
+        <button class="choice-btn" data-q="2">Not sure</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span class="modal-note">You'll be able to check each prediction after playing with that setting.</span>
+      <button class="begin-btn" onclick="startSim()">Let's explore! →</button>
+    </div>
+  </div>
+</div>
+
+<h1>Friction Explorer</h1>
+<p class="subtitle">From <em>Allora and the Puzzles of Archimedes</em></p>
+<p class="tagline">Break the laws of physics! What happens when you turn off static friction, kinetic friction, or both? Try dragging the block to see!</p>
+
+<div class="layout">
+
+  <!-- Controls -->
+  <div class="controls">
+    <h2>⚙ Controls</h2>
+
+    <div class="friction-pair">
+      <!-- Static -->
+      <div class="fsec s-bg s-on" id="ss">
+        <div class="crow"><input type="checkbox" id="sc" checked><label for="sc" class="cs">Static Friction</label></div>
+        <div class="mrow" id="smr">
+          <span class="mlabel">μ<sub>s</sub> =</span>
+          <input type="range" id="sm" class="sr" min="0.05" max="1.5" step="0.05" value="0.7" aria-label="Static friction coefficient">
+          <span class="mval" id="sv">0.70</span>
+        </div>
+        <button class="compare-btn s-btn" id="compareStatic" onclick="showCompare('static')">🔍 Compare to your prediction</button>
+        <div class="pred-inline s-color" id="revealStatic"></div>
+      </div>
+
+      <!-- Kinetic -->
+      <div class="fsec k-bg k-on" id="ks">
+        <div class="crow"><input type="checkbox" id="kc" checked><label for="kc" class="ck">Kinetic Friction</label></div>
+        <div class="mrow" id="kmr">
+          <span class="mlabel">μ<sub>k</sub> =</span>
+          <div class="slider-wrap">
+            <input type="range" id="km" class="kr" min="0.01" max="1.45" step="0.05" value="0.4" aria-label="Kinetic friction coefficient">
+            <div class="slider-limit" id="kLimit" title="Kinetic friction cannot exceed static friction"></div>
+          </div>
+          <span class="mval" id="kv">0.40</span>
+        </div>
+        <div class="knote" id="kn">✱ Always less than static — the <span style="color:var(--rose);font-weight:700;">red line</span> shows the maximum kinetic can be. Drag the static slider to see it move!</div>
+        <button class="compare-btn k-btn" id="compareKinetic" onclick="showCompare('kinetic')">🔍 Compare to your prediction</button>
+        <div class="pred-inline k-color" id="revealKinetic"></div>
+      </div>
+    </div>
+
+    <div class="bottom-controls">
+      <div class="arrow-row crow">
+        <input type="checkbox" id="ac" checked aria-label="Show friction force arrow">
+        <label for="ac">Show friction force arrow</label>
+      </div>
+
+      <div class="inst" style="margin-top:10px;">
+        <strong>How to play:</strong> Drag the block. Your pull builds up force.<br><br>
+        • <strong style="color:var(--rose)">Static friction</strong> holds until you exceed μ<sub>s</sub> × weight.<br>
+        • Then the block breaks free and <strong style="color:var(--teal)">kinetic friction</strong> slows it.<br>
+        • Let go — it coasts to a stop.
+      </div>
+
+      <div class="keyboard-hint" style="margin-top:10px;">
+        <strong>⌨ Keyboard:</strong> Click canvas, then hold <kbd>←</kbd> <kbd>→</kbd> to push.
+      </div>
+    </div>
+
+    <div class="imaginary-banner" id="imaginaryBanner"></div>
+  </div>
+
+  <!-- Canvas -->
+  <div class="cwrap">
+    <canvas id="c" tabindex="0" aria-label="Friction simulation — drag the block or use arrow keys"></canvas>
+    <div class="chint">Drag the block<span class="kb-part">, or use ← → arrow keys after clicking the canvas</span></div>
+  </div>
+
+</div>
+
+<!-- Reflection panel -->
+<div class="reflect" id="reflectPanel">
+  <h3>💭 What did you notice?</h3>
+  <p>Put what you observed into words — this helps it stick!</p>
+  <div class="reflect-questions">
+    <div class="rq">
+      <label for="r1">What was different about dragging with static friction off vs. on?</label>
+      <textarea id="r1" placeholder="Write your thoughts here…"></textarea>
+    </div>
+    <div class="rq">
+      <label for="r2">What happened when you turned off kinetic friction? Did the block behave differently?</label>
+      <textarea id="r2" placeholder="Write your thoughts here…"></textarea>
+    </div>
+    <div class="rq">
+      <label for="r3">What was the most surprising thing you discovered?</label>
+      <textarea id="r3" placeholder="Write your thoughts here…"></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ PREDICTIONS & ANSWERS ═══════════════════════════════════════
+const predictions = { '1': null, '2': null };
+const answers = {
+  '1': {
+    correct: 'There\'s no longer a hard threshold — even a tiny pull does something',
+    explanation: 'Static friction creates the threshold — the minimum force before anything moves. Without it, any pull immediately accelerates the block (though kinetic friction still resists once it\'s moving).'
+  },
+  '2': {
+    correct: 'It keeps going forever',
+    explanation: "Kinetic friction is what slows a moving object. Without it, Newton's first law takes over: an object in motion stays in motion."
+  },
+};
+
+document.querySelectorAll('.choice-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const q = btn.dataset.q;
+    document.querySelectorAll(`.choice-btn[data-q="${q}"]`).forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    predictions[q] = btn.textContent.trim();
+  });
+});
+
+function startSim() {
+  document.getElementById('modalOverlay').style.display = 'none';
+  canvas.focus();
+}
+
+let compareClicked = { static: false, kinetic: false };
+function showCompare(which) {
+  compareClicked[which] = true;
+  const qNum  = which === 'static' ? '1' : '2';
+  const revEl = which === 'static' ? $('revealStatic') : $('revealKinetic');
+  const btn   = which === 'static' ? $('compareStatic') : $('compareKinetic');
+  const ans = answers[qNum], pred = predictions[qNum];
+  const isCorrect = pred === ans.correct;
+  const icon = pred === null ? '' : isCorrect ? '✅ ' : '🔄 ';
+  const cls  = pred === null ? 'pred-none-lbl' : isCorrect ? 'pred-correct' : 'pred-wrong';
+  const yourText = pred === null ? "You didn't make a prediction for this one." : `${icon}Your prediction: "${pred}"`;
+  revEl.innerHTML = `<div class="pred-your-ans ${cls}">${yourText}</div><div class="pred-physics"><strong>What the physics says:</strong> ${ans.correct} — ${ans.explanation}</div>`;
+  revEl.style.display = 'block';
+  btn.textContent = '✓ Prediction compared';
+  btn.style.opacity = '0.6'; btn.style.cursor = 'default'; btn.onclick = null;
+  if (compareClicked.static && compareClicked.kinetic) {
+    setTimeout(() => { const rp=$('reflectPanel'); rp.style.display='block'; rp.scrollIntoView({behavior:'smooth',block:'start'}); }, 400);
+  }
+}
+
+// ═══ CANVAS SETUP & RESIZE ═══════════════════════════════════════
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// Logical (design) dimensions
+const LW = 720, LH = 420;
+let scale = 1; // logical → CSS pixels (handled by CSS width:100%)
+// We draw at full logical size; CSS scales it visually.
+// For crisp rendering on retina, we scale the canvas backing store by devicePixelRatio.
+
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.parentElement.clientWidth;
+  const cssH = Math.round(cssW * LH / LW);
+  canvas.width  = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  canvas.style.width  = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  scale = cssW / LW * dpr; // transform from logical coords to canvas pixels
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// All drawing uses logical coords (0..720 x 0..420) — scale handles the rest.
+const W = LW, H = LH;
+const GY = H - 80;
+
+// ═══ SIM CONSTANTS ═══════════════════════════════════════════════
+const BW = 90, BH = 64;
+const MASS = 1, G = 200, K_DRAG = 1.5, KEY_RAMP = 120, KEY_MAX = 400;
+
+// ═══ STATE ═══════════════════════════════════════════════════════
+let bx = W/2 - BW/2, bvx = 0, sliding = false;
+let dragging = false, mouseX = 0, grabOffsetX = 0, appliedForce = 0;
+let keyForce = 0, keyDir = 0;
+let toastText = '', toastAlpha = 0, toastTimer = 0;
+let slideCountStaticOff = 0, slideCountKineticOff = 0, prevSliding = false;
+let staticOn = true, kineticOn = true, showArrow = true;
+let muS = 0.7, muK = 0.4;
+
+// ═══ UI WIRING ═══════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const smSlider = $('sm'), kmSlider = $('km');
+
+function updateKineticLimitMarker() {
+  const marker = $('kLimit');
+  if (!marker) return;
+  // The kinetic slider range is 0.01..1.45
+  // The limit is muS - 0.05, capped to that range
+  const sliderMin = 0.01, sliderMax = 1.45;
+  const limitVal = Math.min(Math.max(muS - 0.05, sliderMin), sliderMax);
+  const pct = (limitVal - sliderMin) / (sliderMax - sliderMin) * 100;
+  marker.style.left = `calc(${pct}% + ${(0.5 - pct/100) * 16}px)`; // account for thumb width (~16px)
+}
+
+function clampK() {
+  const maxK = Math.max(0.01, parseFloat(smSlider.value) - 0.05);
+  if (parseFloat(kmSlider.value) > maxK) { kmSlider.value = maxK; muK = maxK; $('kv').textContent = muK.toFixed(2); }
+  updateKineticLimitMarker();
+}
+smSlider.addEventListener('input', () => { muS = parseFloat(smSlider.value); $('sv').textContent = muS.toFixed(2); clampK(); });
+kmSlider.addEventListener('input', () => {
+  const maxK = Math.max(0.01, muS - 0.05);
+  if (parseFloat(kmSlider.value) > maxK) kmSlider.value = maxK;
+  muK = parseFloat(kmSlider.value); $('kv').textContent = muK.toFixed(2);
+});
+
+// Init marker position
+updateKineticLimitMarker();
+$('sc').addEventListener('change', e => {
+  staticOn = e.target.checked;
+  $('ss').classList.toggle('s-on', staticOn);
+  $('smr').style.opacity = staticOn ? '1' : '0.4';
+  $('smr').style.pointerEvents = staticOn ? '' : 'none';
+});
+$('kc').addEventListener('change', e => {
+  kineticOn = e.target.checked;
+  $('ks').classList.toggle('k-on', kineticOn);
+  $('kmr').style.opacity = kineticOn ? '1' : '0.4';
+  $('kmr').style.pointerEvents = kineticOn ? '' : 'none';
+  $('kn').style.opacity = kineticOn ? '1' : '0.4';
+});
+$('ac').addEventListener('change', e => { showArrow = e.target.checked; });
+
+// ═══ INPUT ═══════════════════════════════════════════════════════
+function getLogicalX(e) {
+  const r = canvas.getBoundingClientRect();
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  // Convert CSS pixels → logical coords
+  return (cx - r.left) * (LW / r.width);
+}
+
+// Touch target is larger on mobile for easier grabbing
+function hitBlock(x) {
+  const pad = ('ontouchstart' in window) ? 20 : 0;
+  return x >= bx - pad && x <= bx + BW + pad;
+}
+
+canvas.addEventListener('mousedown', e => {
+  const x = getLogicalX(e);
+  if (hitBlock(x)) { dragging = true; grabOffsetX = x - (bx + BW/2); canvas.style.cursor = 'grabbing'; }
+});
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const x = getLogicalX(e);
+  if (hitBlock(x)) { dragging = true; grabOffsetX = x - (bx + BW/2); }
+}, { passive: false });
+canvas.addEventListener('mousemove', e => {
+  mouseX = getLogicalX(e);
+  if (!dragging) canvas.style.cursor = hitBlock(mouseX) ? 'grab' : 'default';
+});
+canvas.addEventListener('touchmove', e => { e.preventDefault(); mouseX = getLogicalX(e); }, { passive: false });
+function release() { dragging = false; appliedForce = 0; canvas.style.cursor = 'default'; }
+canvas.addEventListener('mouseup', release);
+canvas.addEventListener('touchend', release);
+document.addEventListener('mouseup', release);
+
+const keysHeld = new Set();
+canvas.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft')  { keysHeld.add('left');  e.preventDefault(); }
+  if (e.key === 'ArrowRight') { keysHeld.add('right'); e.preventDefault(); }
+});
+canvas.addEventListener('keyup', e => {
+  if (e.key === 'ArrowLeft')  keysHeld.delete('left');
+  if (e.key === 'ArrowRight') keysHeld.delete('right');
+});
+
+// ═══ TOAST ═══════════════════════════════════════════════════════
+function showToast(text) { toastText = text; toastAlpha = 1; toastTimer = 2.8; }
+
+// ═══ PHYSICS ═════════════════════════════════════════════════════
+function physics(dt) {
+  const N = MASS * G;
+  const staticMax = staticOn  ? muS * N : 0;
+  const kineticF  = kineticOn ? muK * N : 0;
+
+  if (keysHeld.has('right') && !keysHeld.has('left')) { keyDir=1;  keyForce=Math.min(keyForce+KEY_RAMP*dt,KEY_MAX); }
+  else if (keysHeld.has('left') && !keysHeld.has('right')) { keyDir=-1; keyForce=Math.min(keyForce+KEY_RAMP*dt,KEY_MAX); }
+  else { keyForce=0; keyDir=0; }
+
+  if (dragging) { appliedForce = K_DRAG * ((mouseX - grabOffsetX) - (bx+BW/2)); }
+  else if (keyDir !== 0) { appliedForce = keyDir * keyForce; }
+  else { appliedForce = 0; }
+
+  if (!sliding) {
+    if (!staticOn && (dragging || keyDir!==0)) sliding = true;
+    else if (Math.abs(appliedForce) > staticMax) sliding = true;
+    if (!sliding) { updateUI(); return; }
+  }
+
+  const speed = Math.abs(bvx);
+  let netForce;
+  if (speed > 0.5) {
+    netForce = appliedForce - Math.sign(bvx) * kineticF;
+  } else if (!staticOn && Math.abs(appliedForce) > 0) {
+    netForce = appliedForce - Math.sign(appliedForce) * kineticF * Math.min(speed/0.5, 1);
+  } else {
+    netForce = appliedForce;
+  }
+
+  let newVx = bvx + (netForce/MASS)*dt;
+  if (Math.sign(newVx) !== Math.sign(bvx) && Math.abs(bvx) > 0) newVx = 0;
+  bvx = Math.max(-600, Math.min(600, newVx));
+  bx += bvx * dt;
+
+  if (staticOn && Math.abs(bvx)<1 && Math.abs(appliedForce)<=staticMax) { bvx=0; sliding=false; }
+  if (!dragging && keyDir===0 && Math.abs(bvx)<2) { bvx=0; sliding=false; }
+  if (bx < 10)      { bx=10;      bvx= Math.abs(bvx);  sliding=true; }
+  if (bx > W-BW-10) { bx=W-BW-10; bvx=-Math.abs(bvx); sliding=true; }
+
+  if (sliding && !prevSliding) {
+    if (staticOn) showToast('Static friction overcome! → Kinetic takes over');
+    else if (kineticOn) showToast('Sliding! But kinetic friction stops it almost right away');
+
+    if (!staticOn) {
+      slideCountStaticOff++;
+      if (slideCountStaticOff >= 3 && !compareClicked.static) {
+        const btn = $('compareStatic');
+        btn.style.display = 'block';
+        btn.classList.add('appearing');
+      }
+    }
+    if (!kineticOn) {
+      slideCountKineticOff++;
+      if (slideCountKineticOff >= 3 && !compareClicked.kinetic) {
+        const btn = $('compareKinetic');
+        btn.style.display = 'block';
+        btn.classList.add('appearing');
+      }
+    }
+  }
+  prevSliding = sliding;
+
+  if (toastTimer > 0) {
+    toastTimer -= dt;
+    toastAlpha = Math.min(1, toastTimer/0.6);
+    if (toastTimer <= 0) { toastAlpha=0; toastTimer=0; }
+  }
+  updateUI();
+}
+
+function updateUI() {
+  const mf=$('mf'), ml=$('ml'), sl=$('sl'), mm=$('mm');
+  if (!mf) return;
+  const N=MASS*G, staticMax=staticOn?muS*N:1, dispMax=Math.max(staticMax*1.6,20);
+  const f=Math.abs(appliedForce), pct=Math.min(f/dispMax*100,100);
+  let col='#3a6a9a';
+  if (sliding) col='#2a7a7a';
+  else if (staticOn&&f>staticMax*0.7) col='#c85a6e';
+  mf.style.width=pct+'%'; mf.style.background=col; mm.textContent=dispMax.toFixed(0)+' N';
+  if (staticOn) { ml.style.display=''; ml.style.left=Math.min(staticMax/dispMax*100,97)+'%'; } else { ml.style.display='none'; }
+  const strain=staticOn?f/Math.max(staticMax,1):0;
+  if (sliding) { sl.textContent='💨 Sliding — kinetic friction active'; sl.className='slabel sr-slide'; }
+  else if (!staticOn&&!kineticOn&&Math.abs(bvx)>1) { sl.textContent='🌐 No friction — glides freely!'; sl.className='slabel sr-free'; }
+  else if ((dragging||keyDir!==0)&&staticOn&&strain>0.45) {
+    sl.textContent=strain>0.85?'💪 Almost… static friction is holding!':'💪 Pushing… static friction resists';
+    sl.className='slabel sr-strain';
+  } else { sl.textContent='🧱 Block at rest'; sl.className='slabel sr-rest'; }
+}
+
+// ═══ DRAWING ═════════════════════════════════════════════════════
+function drawBG() {
+  const sky=ctx.createLinearGradient(0,0,0,GY);
+  sky.addColorStop(0,'#9ac8e8'); sky.addColorStop(1,'#d8eef8');
+  ctx.fillStyle=sky; ctx.fillRect(0,0,W,GY);
+  ctx.fillStyle='#5a9840'; ctx.fillRect(0,GY,W,12);
+  const dirt=ctx.createLinearGradient(0,GY+12,0,H);
+  dirt.addColorStop(0,'#9a7038'); dirt.addColorStop(1,'#7a5020');
+  ctx.fillStyle=dirt; ctx.fillRect(0,GY+12,W,H);
+  ctx.strokeStyle='#357825'; ctx.lineWidth=1.5;
+  for (let x=18;x<W;x+=16) {
+    const j=Math.sin(x*1.5)*3;
+    ctx.beginPath(); ctx.moveTo(x,GY+2); ctx.lineTo(x-3,GY-6+j); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x+5,GY+1); ctx.lineTo(x+4,GY-8+j); ctx.stroke();
+  }
+}
+
+function drawBlock() {
+  let jiggle=0;
+  if (!staticOn&&kineticOn&&(dragging||keyDir!==0)&&Math.abs(appliedForce)>0.5&&Math.abs(bvx)<10) {
+    jiggle=Math.sin(Date.now()*0.035)*Math.min(Math.abs(appliedForce)*0.08,5);
+  }
+  const dbx=bx+jiggle, by=GY-BH, ox=10, oy=9;
+  ctx.fillStyle='rgba(0,0,0,0.14)';
+  ctx.beginPath(); ctx.ellipse(dbx+BW/2,GY+7,BW/2+8,7,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#c0ae88';
+  ctx.beginPath(); ctx.moveTo(dbx,by); ctx.lineTo(dbx+BW,by); ctx.lineTo(dbx+BW+ox,by-oy); ctx.lineTo(dbx+ox,by-oy); ctx.closePath(); ctx.fill(); ctx.strokeStyle='#8a7050'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle='#7a6040';
+  ctx.beginPath(); ctx.moveTo(dbx+BW,by); ctx.lineTo(dbx+BW+ox,by-oy); ctx.lineTo(dbx+BW+ox,by-oy+BH); ctx.lineTo(dbx+BW,by+BH); ctx.closePath(); ctx.fill(); ctx.stroke();
+  const staticMax=staticOn?muS*MASS*G:0;
+  const strain=(!sliding&&staticOn&&staticMax>0)?Math.min(Math.abs(appliedForce)/staticMax,1):0;
+  ctx.fillStyle=`rgb(${Math.round(160+strain*80)},${Math.round(145-strain*80)},${Math.round(110-strain*70)})`;
+  ctx.fillRect(dbx,by,BW,BH); ctx.strokeStyle='#7a6040'; ctx.lineWidth=1.2; ctx.strokeRect(dbx,by,BW,BH);
+  ctx.strokeStyle='rgba(70,50,20,0.25)'; ctx.lineWidth=0.8;
+  for(let r=1;r<=2;r++){const ry=by+BH/3*r; ctx.beginPath(); ctx.moveTo(dbx+5,ry); ctx.lineTo(dbx+BW-5,ry); ctx.stroke();}
+  ctx.beginPath(); ctx.moveTo(dbx+BW/2,by+4); ctx.lineTo(dbx+BW/2,by+BH-4); ctx.stroke();
+}
+
+function drawAppliedArrow() {
+  if ((!dragging&&keyDir===0)||Math.abs(appliedForce)<1) return;
+  const cx=bx+BW/2, ay=GY-BH-22, dir=Math.sign(appliedForce), ex=cx+dir*Math.abs(appliedForce)*1.8;
+  ctx.strokeStyle='#3a6a9a'; ctx.fillStyle='#3a6a9a'; ctx.lineWidth=3; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(cx,ay); ctx.lineTo(ex,ay); ctx.stroke();
+  const hs=9; ctx.beginPath(); ctx.moveTo(ex,ay); ctx.lineTo(ex-dir*hs,ay-hs/2); ctx.lineTo(ex-dir*hs,ay+hs/2); ctx.closePath(); ctx.fill();
+  ctx.font='bold 11px Atkinson Hyperlegible,sans-serif'; ctx.textAlign='center'; ctx.fillStyle='#3a6a9a';
+  ctx.fillText('F (applied)',(cx+ex)/2,ay-10);
+}
+
+function drawFrictionArrow() {
+  if (!showArrow) return;
+  const N=MASS*G; let dir=0, mag=0;
+  if (sliding&&kineticOn) { dir=-(Math.abs(bvx)>0.5?Math.sign(bvx):Math.sign(appliedForce||1)); mag=muK*N; }
+  else if (!sliding&&staticOn&&Math.abs(appliedForce)>0.5) { dir=-Math.sign(appliedForce); mag=Math.min(Math.abs(appliedForce),muS*N); }
+  else return;
+  const cx=bx+BW/2, ay=GY-BH+12, ex=cx+dir*mag*2.2, color=sliding?'#2a7a7a':'#c85a6e';
+  ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=3; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(cx,ay); ctx.lineTo(ex,ay); ctx.stroke();
+  const hs=9; ctx.beginPath(); ctx.moveTo(ex,ay); ctx.lineTo(ex-dir*hs,ay-hs/2); ctx.lineTo(ex-dir*hs,ay+hs/2); ctx.closePath(); ctx.fill();
+  ctx.font='bold 11px Atkinson Hyperlegible,sans-serif'; ctx.textAlign='center'; ctx.fillStyle=color;
+  ctx.fillText(sliding?'fₖ (kinetic)':'fₛ (static)',(cx+ex)/2,ay-10);
+}
+
+function drawDragHint() {
+  if (dragging||keyDir!==0||Math.abs(bvx)>2) return;
+  ctx.globalAlpha=0.4+Math.sin(Date.now()*0.003)*0.25;
+  ctx.font='20px serif'; ctx.textAlign='center'; ctx.fillText('👆',bx+BW/2,GY-BH-8);
+  ctx.globalAlpha=1;
+}
+
+function drawDragSpring() {
+  if (!dragging&&keyDir===0) return;
+  const blockCX=bx+BW/2, targetCX=dragging?mouseX-grabOffsetX:blockCX+Math.sign(appliedForce)*80;
+  const gap=targetCX-blockCX;
+  if (Math.abs(gap)<4) return;
+  const sy=GY-BH/2, x1=blockCX+Math.sign(gap)*BW/2, x2=dragging?mouseX:targetCX;
+  ctx.strokeStyle='rgba(60,100,160,0.5)'; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+  ctx.beginPath(); ctx.moveTo(x1,sy); ctx.lineTo(x2,sy); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='rgba(60,100,160,0.6)';
+  ctx.beginPath(); ctx.arc(x2,sy,5,0,Math.PI*2); ctx.fill();
+}
+
+function drawCanvasMeter() {
+  const N=MASS*G, staticMax=staticOn?muS*N:0, dispMax=Math.max(staticMax*1.6,20);
+  const f=Math.abs(appliedForce), pct=Math.min(f/dispMax,1);
+  const mx=14, my=H-36, mw=W-28, mh=14, mr=5;
+  ctx.font='10px Atkinson Hyperlegible,sans-serif'; ctx.fillStyle='rgba(42,31,14,0.7)';
+  ctx.textAlign='left'; ctx.fillText('Applied force →',mx,my-5);
+  if (staticOn) { ctx.textAlign='right'; ctx.fillText('← static limit',mx+mw,my-5); }
+  ctx.fillStyle='rgba(200,185,155,0.7)'; ctx.beginPath(); ctx.roundRect(mx,my,mw,mh,mr); ctx.fill();
+  let fc='rgba(58,106,154,0.85)';
+  if (sliding) fc='rgba(42,122,122,0.85)';
+  else if (staticOn&&f>staticMax*0.7) fc='rgba(200,90,110,0.85)';
+  ctx.fillStyle=fc; ctx.beginPath(); ctx.roundRect(mx,my,mw*pct,mh,mr); ctx.fill();
+  if (staticOn&&staticMax>0) {
+    const tx=mx+(staticMax/dispMax)*mw;
+    ctx.strokeStyle='rgba(200,60,80,0.9)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(tx,my-2); ctx.lineTo(tx,my+mh+2); ctx.stroke();
+  }
+  ctx.strokeStyle='rgba(140,112,60,0.5)'; ctx.lineWidth=1; ctx.beginPath(); ctx.roundRect(mx,my,mw,mh,mr); ctx.stroke();
+}
+
+function drawToast() {
+  if (toastAlpha<=0) return;
+  ctx.font='bold 13px Atkinson Hyperlegible,sans-serif';
+  const tw=ctx.measureText(toastText).width, pad=12, th=30;
+  const tx=W/2-tw/2-pad, ty=GY-BH-80;
+  ctx.globalAlpha=toastAlpha;
+  ctx.fillStyle='#1a3020'; ctx.beginPath(); ctx.roundRect(tx,ty,tw+pad*2,th,8); ctx.fill();
+  ctx.fillStyle='#e0f8e8'; ctx.textAlign='center'; ctx.fillText(toastText,W/2,ty+19);
+  ctx.globalAlpha=1;
+}
+
+function drawImaginaryBanner() {
+  const kineticOnly=!staticOn&&kineticOn, staticOnly=staticOn&&!kineticOn;
+  if (!kineticOnly&&!staticOnly) return;
+  const PAD=14, W2=W-PAD*2;
+  let boldPart, restOfLine1, bodyLines;
+  if (kineticOnly) {
+    boldPart='✨ Imaginary situation!'; restOfLine1=" It's not actually possible to take away";
+    bodyLines=["kinetic friction but leave static friction. They're really the same","force: the roughness of surfaces makes it harder to slide things","across each other. But it's fun to think of what would happen","if we broke just one or the other."];
+  } else {
+    boldPart='✨ Imaginary situation!'; restOfLine1=' This situation is even weirder than if we';
+    bodyLines=["turned off kinetic friction. It doesn't make sense that it'd be","easy to get something moving, but then suddenly have kinetic","friction kick in. An object would start moving but be immediately","stopped by kinetic friction."];
+  }
+  const lineH=17, boxH=(bodyLines.length+1)*lineH+PAD*2, boxY=10;
+  ctx.fillStyle='rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.roundRect(PAD+3,boxY+3,W2,boxH,8); ctx.fill();
+  ctx.fillStyle='#fdf0cc'; ctx.beginPath(); ctx.roundRect(PAD,boxY,W2,boxH,8); ctx.fill();
+  ctx.strokeStyle='#c8922a'; ctx.lineWidth=2; ctx.beginPath(); ctx.roundRect(PAD,boxY,W2,boxH,8); ctx.stroke();
+  ctx.fillStyle='#c8922a'; ctx.beginPath(); ctx.roundRect(PAD,boxY,4,boxH,[8,0,0,8]); ctx.fill();
+  ctx.textAlign='left';
+  const ty0=boxY+PAD+2;
+  ctx.font='bold 12px Atkinson Hyperlegible,sans-serif'; ctx.fillStyle='#7a4a08';
+  ctx.fillText(boldPart,PAD+12,ty0);
+  const boldW=ctx.measureText(boldPart).width;
+  ctx.font='12px Atkinson Hyperlegible,sans-serif'; ctx.fillStyle='#5a3808';
+  ctx.fillText(restOfLine1,PAD+12+boldW,ty0);
+  bodyLines.forEach((line,i)=>{ if(!line)return; ctx.font='12px Atkinson Hyperlegible,sans-serif'; ctx.fillStyle='#5a3808'; ctx.fillText(line,PAD+12,ty0+(i+1)*lineH); });
+}
+
+// ═══ LOOP ════════════════════════════════════════════════════════
+let last=null;
+function loop(ts) {
+  if(!last)last=ts;
+  const dt=Math.min((ts-last)/1000,0.05); last=ts;
+  physics(dt);
+  ctx.clearRect(0,0,W,H);
+  drawBG(); drawDragSpring(); drawBlock();
+  drawAppliedArrow(); drawFrictionArrow();
+  drawCanvasMeter(); drawToast(); drawDragHint();
+  drawImaginaryBanner();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
